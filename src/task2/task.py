@@ -16,20 +16,42 @@ torch.cuda.manual_seed_all(123)
 
 
 class MixUp:
+    """
+    A class used to apply MixUp augmentation to images and labels.
+
+    Attributes:
+        num_classes (int): The number of classes in the labels.
+        alpha (float): The alpha parameter for the Beta distribution. Default is 0.2.
+        method (int): The method to use for sampling lambda. 1 for Beta distribution, 2 for Uniform distribution.
+
+    Methods:
+        __call__(images, labels): Applies MixUp augmentation to the images and labels.
+    """
     def __init__(self, num_classes, alpha=0.2, method=1):
         self.alpha = alpha
         self.method = method
         self.num_classes = num_classes
 
     def __call__(self, images, labels):
+        """
+        Applies MixUp augmentation to the images and labels.
+
+        Args:
+            images (Tensor): A tensor of images.
+            labels (Tensor): A tensor of labels.
+
+        Returns:
+            Tensor, Tensor: The augmented images and labels.
+        """
         labels = one_hot(labels, self.num_classes)
         
         if self.method == 1:
             lambd = torch.distributions.Beta(self.alpha, self.alpha).sample((images.size(0),)).to(images.device)
         elif self.method == 2:
-            lambd = torch.distributions.Uniform(0.1, 0.4).sample((images.size(0),)).to(images.device)
+            #sampling uniform from [0,1]
+            lambd = torch.distributions.Uniform(0, 1).sample((images.size(0),)).to(images.device)
 
-        #mixing random images
+        #mixing random
         indices = torch.randperm(images.size(0))
 
         images1, labels1 = images, labels
@@ -41,15 +63,33 @@ class MixUp:
         return mix_images, mix_labels
     
 def imshow(img):
+    """
+    Displays an image.
+
+    Args:
+        img (PIL.Image or ndarray): The image to display. This can be a PIL Image object or a numpy array.
+    """
     img = img / 2 + 0.5  # Unnormalize
     npimg = img.numpy()
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.axis('off')
     
 def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampling_method):
+    """
+    Trains and evaluates a model.
+    Args:
+        trainloader (DataLoader): The DataLoader for the training data.
+        testloader (DataLoader): The DataLoader for the test data.
+        num_epochs (int): The number of epochs to train for.
+        save_filename (str): The filename to save the trained model under.
+        sampling_method (str): The method to use for sampling during training.
+
+    Returns:
+        dict: A dictionary containing the training and test accuracy for each epoch.
+    """
     ## vision transformer 
     net = VisionTransformer(image_size=32, patch_size=8, num_layers=6, num_heads=8,
-                            hidden_dim=384, mlp_dim=1536, dropout=0.0, num_classes=len(classes)).cuda()
+                            hidden_dim=384, mlp_dim=1536, dropout=0.0, num_classes=len(classes)).to(device)
 
     ## loss and optimiser
     criterion = torch.nn.CrossEntropyLoss()
@@ -75,12 +115,12 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
 
             # forward + backward + optimize
             with autocast():
-                outputs = net(images.cuda())
+                outputs = net(images.to(device))
                 #compute accuracy
                 _, predicted = torch.max(outputs.data, 1)
                 total_train += labels.size(0)
                 # Convert one-hot encoded labels to class indices
-                labels_indices = labels.argmax(dim=1).cuda()
+                labels_indices = labels.argmax(dim=1).to(device)
 
                 correct_train += (predicted == labels_indices).sum().item()
                 loss = criterion(outputs, labels_indices)
@@ -91,15 +131,17 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
 
             # print statistics
             running_loss += loss.item()
-            if i % 200 == 199:    # print every 200 mini-batches
-                print('[%d, %5d] loss: %.3f' %
-                    (epoch + 1, i + 1, running_loss / 2000))
-                running_loss = 0.0
-                
-        print('Training done.')
+            # if i % 200 == 199:    # print every 200 mini-batches
+            #     print('[%d, %5d] loss: %.3f' %
+            #         (epoch + 1, i + 1, running_loss / 2000))
+            #     running_loss = 0.0
+            
+        average_loss = running_loss / i
         train_accuracy = 100 * correct_train / total_train
-        print('Epoch {}, Training accuracy: {}%'.format(epoch+1, train_accuracy))
-        results_train.append(train_accuracy)        
+        print('Epoch {}, Training accuracy: {}%, Average loss: {}' .format(epoch+1, train_accuracy, average_loss))
+        results_train.append(train_accuracy) 
+        print('Training done.')
+               
         # evaluation on test
         net.eval()
         correct_test = 0
@@ -108,14 +150,15 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
         with torch.no_grad():
             for data in testloader:
                 images, labels = data
-                outputs = net(images.cuda())
+                outputs = net(images.to(device))
                 _, predicted = torch.max(outputs.data, 1)
                 total_test += labels.size(0)
-                correct_test += (predicted == labels.cuda()).sum().item()
+                correct_test += (predicted == labels.to(device)).sum().item()
 
         test_accuracy = 100 * correct_test / total_test
         print('Epoch {}, Testing accuracy: {}%'.format(epoch+1, test_accuracy))
         results_test.append(test_accuracy)    # save trained model
+    
     
     # After training, plot the accuracies
     plt.figure(figsize=(10, 5))
@@ -125,39 +168,45 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.legend()
-    plt.savefig('Accuracy_vs_Epoch_metod_'+ str(sampling_method)+ '.png')
+    plt.savefig('Accuracy_vs_Epoch_method_'+ str(sampling_method)+ '.png')
     plt.show()
     
-    # Get some random test images
-    #TODO: make sure this generates 36 images
+    # 36 images
+    images_list = []
+    labels_list = []
+    # Initialize a data iterator
     dataiter = iter(testloader)
-    images, labels = next(dataiter)
+    # Keep fetching data until we have 36 images
+    while len(images_list) < 36:
+        images, labels = next(dataiter)
+        images_list.extend(images)
+        labels_list.extend(labels)
 
     # Get predictions for these images
-    outputs = net(images.cuda())
+    outputs = net(torch.stack(images_list[:36]).to(device))
     _, predicted = torch.max(outputs.data, 1)
 
     # Prepare the figure
     fig = plt.figure(figsize=(10, 10))
 
     # For each image in the batch
-    for i in range(batch_size):
+    for i in range(36):
         ax = fig.add_subplot(6, 6, i+1, xticks=[], yticks=[])
-        imshow(images[i])
-        ax.set_title(f"GT:{classes[labels[i]]}\nPred:{classes[predicted[i]]}", color=("green" if predicted[i]==labels[i] else "red"))
+        imshow(images_list[i])
+        ax.set_title(f"GT:{classes[labels_list[i]]}\nPred:{classes[predicted[i]]}", color=("green" if predicted[i]==labels_list[i] else "red"))
 
     # Save the figure
     plt.savefig(f"result_{sampling_method}.png")
     print('result.png saved.')
     
+    #saving models 
     torch.save(net.state_dict(), save_filename)
     print(f"Model {sampling_method} saved.")
-
-
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
 if __name__ == '__main__':
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     scaler = GradScaler()
     ## cifar-10 dataset

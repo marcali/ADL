@@ -24,7 +24,7 @@ def fit_polynomial_ls(x, t, M):
 
     return w.view(-1)
 
-def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=100, N_epochs=2000):
+def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_epochs=3000):
     #initialise weights to 1
     torch.manual_seed(123)
 
@@ -49,14 +49,8 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=100, N_
     
     for epoch in range(N_epochs):
         for batch_x, batch_t in loader:
-            #normalize batch x
-            #batch_x = (batch_x - batch_x.mean())/batch_x.std()
-            #check if this is supposed to be after step
             opt.zero_grad()
-            #used wights multiplication wirg batch x to do the prediction
             batch_y = batch_x@weights
-            #print('output',  batch_y)
-            #mean square loss
             loss = mse_loss(batch_y, batch_t)
             loss.backward() 
             #TODO: for plotting only
@@ -122,12 +116,10 @@ if __name__ == '__main__':
     #rmse
     rmse_obs_train = torch.sqrt(torch.mean(torch.square(diff_obs_train)))
     rmse_obs_test = torch.sqrt(torch.mean(torch.square(diff_obs_test)))
-    print('Training RMSE between the observed training data and the underlying “true” polynomial curve is ', rmse_obs_train.item())
-    print('Test RMSE between the observed training data and the underlying “true” polynomial curve in training data is ', rmse_obs_test.item())
-    print('Test Mean difference between the observed training data and the underlying “true” polynomial curve in training data is ', mean_obs_test.item(), 'and standard diviation is', sd_obs_test.item())
-    print('Training Mean difference between the observed training data and the underlying “true” polynomial curve is ', mean_obs_train.item(), 'and standard diviation is', sd_obs_train.item() )
-
-
+    print(' RMSE between the observed training data and the “true” polynomial curve is {:.2f}', rmse_obs_train.item())
+    print(' RMSE between the observed test data and the “true” polynomial curve is {:.2f}', rmse_obs_test.item())
+    # print('Test Mean difference between the observed training data and the underlying “true” polynomial curve in training data is ', mean_obs_test.item(), 'and standard diviation is', sd_obs_test.item())
+    # print('Training Mean difference between the observed training data and the underlying “true” polynomial curve is ', mean_obs_train.item(), 'and standard diviation is', sd_obs_train.item() )
 
     for i, m in enumerate(M):
         if len(w) < m.item() + 1:
@@ -157,11 +149,11 @@ if __name__ == '__main__':
         sd_pred_train, mean_pred_train = torch.std_mean(diff_pred_train)
         sd_pred_test, mean_pred_test = torch.std_mean(diff_pred_test)
 
-        print('Training Mean difference between “LS-predicted” values and the underlying “true” polynomial curve is {:.3f}, and standard diviation: {:.3f}' .format(mean_pred_train.item(), sd_pred_train.item()) )
-        print('Test  Mean difference between “LS-predicted” values and the underlying “true” polynomial curve is {:.3f}, and standard diviation: {:.3f}' .format(mean_pred_test.item(), sd_pred_test.item()) )
-        print('Training RMSE between the LS values and the underlying “true” polynomial curve is {:.4f}, and standard deviation is {:.4f}'.format( rmse_train.item(), std_dev_train.item()))
-        print('Test RMSE between the LS values and the underlying “true” polynomial curve is {:.4f}, and standard deviation is {:.4f}'.format( rmse_test.item(), std_dev_test.item()))
-        print('RMSE between the true weights and predicted by LS weights is {:.3f}'.format( rmse_weights.item()))
+        # print('Training Mean difference between “LS-predicted” values and the “true” polynomial curve is {:.2f}, and standard diviation: {:.2f}' .format(mean_pred_train.item(), sd_pred_train.item()) )
+        # print('Test  Mean difference between “LS-predicted” values and “true” polynomial curve is {:.2f}, and standard diviation: {:.2f}' .format(mean_pred_test.item(), sd_pred_test.item()) )
+        print('Training RMSE between the LS values and the “true” polynomial curve is {:.2f}, and standard deviation is {:.2f}'.format( rmse_train.item(), std_dev_train.item()))
+        print('Test RMSE between the LS values and the “true” polynomial curve is {:.2f}, and standard deviation is {:.2f}'.format( rmse_test.item(), std_dev_test.item()))
+        print('RMSE between the true weights and predicted by LS weights is {:.2f}'.format( rmse_weights.item()))
 
         #for SGD
         t0 = time.time()
@@ -177,8 +169,8 @@ if __name__ == '__main__':
         #mean difference 
         std_difference_tr, mean_difference_tr = torch.std_mean(torch.abs(pred_train_opt - y_train))
         std_difference_te, mean_difference_te = torch.std_mean(torch.abs(pred_train_opt - y_train))
-        print('Training Mean absolute difference between the “SGD-predicted” values and the underlying “true” polynomial curve is {:.3f}, and standard deviation is {:.3f}'.format( mean_difference_tr.item(), std_difference_tr.item()))
-        print('Test Mean absolute difference between the “SGD-predicted” values and the underlying “true” polynomial curve is {:.3f}, and standard deviation is {:.3f}'.format( mean_difference_te.item(), std_difference_te.item()))
+        # print('Training Mean difference between the “SGD-predicted” values and the “true” polynomial curve is {:.2f}, and standard deviation is {:.2f}'.format( mean_difference_tr.item(), std_difference_tr.item()))
+        # print('Test Mean difference between the “SGD-predicted” values and the “true” polynomial curve is {:.2f}, and standard deviation is {:.2f}'.format( mean_difference_te.item(), std_difference_te.item()))
         
         #rmse
         diff_pred_train_opt = pred_train_opt - t_train
@@ -188,12 +180,13 @@ if __name__ == '__main__':
         rmse_test_opt= torch.sqrt(torch.mean(torch.square(diff_pred_test_opt)))
         rmse_weights_opt = torch.sqrt(torch.mean(torch.square(diff_pred_weights_opt)))
         std_dev_train_opt = torch.std(diff_pred_train_opt)
-        std_dev_test_opt = torch.std(diff_pred_train_opt)
-        print('Training RMSE  between the “SGD-predicted” values and the underlying “true” polynomial curve is {:.3f}, and standard deviation is {:.3f}'.format( rmse_train_opt.item(), std_dev_train_opt.item()))
-        print('Test RMSE between the “SGD-predicted” values and the underlying “true” polynomial curve is {:.3f}, and standard deviation is {:.3f}'.format( rmse_test_opt.item(), std_dev_test_opt.item()))
-        print('RMSE between the true weights and predicted by SGD weights is {:.3f}'.format( rmse_weights_opt.item()))
+        std_dev_test_opt = torch.std(diff_pred_test_opt)
+        print('Training RMSE  between the “SGD-predicted” values and the “true” polynomial curve is {:.2f}, and s.d. is {:.2f}'.format( rmse_train_opt.item(), std_dev_train_opt.item()))
+        print('Test RMSE between the “SGD-predicted” values and the “true” polynomial curve is {:.2f}, and s.d. is {:.2f}'.format( rmse_test_opt.item(), std_dev_test_opt.item()))
+        print('RMSE between the true weights and predicted by SGD weights is {:.2f}'.format( rmse_weights_opt.item()))
         
-            #TODO: remove all plots
+        #TODO: remove all plots
         fig, ax = plt.subplots()
         ax.plot(x_train, y_train, 'o')
         ax.plot(x_train, pred_train_opt, 'v')
+        plt.show()
