@@ -13,6 +13,7 @@ import numpy as np
 from torch.nn.functional import one_hot
 torch.manual_seed(123)
 torch.cuda.manual_seed_all(123)
+import sys
 
 
 class MixUp:
@@ -247,8 +248,11 @@ if __name__ == '__main__':
     class_indices = labels.argmax(dim=1)
     print('Ground truth labels:' + ' '.join('%5s' % classes[class_indices[j]] for j in range(batch_size)))
         
-    #do smapling method 1
-    train_and_evaluate(trainloader, testloader, 20, 'saved_model_sampling_method1.pt', 1)
+    with open('output.txt', 'w') as f:
+        sys.stdout = f
+        #do smapling method 1
+        train_and_evaluate(trainloader, testloader, 20, classes, 'saved_model_sampling_method1_task3.pt', 1)
 
-    #do sampling method 2
-    train_and_evaluate(trainloader, testloader, 20, 'saved_model_sampling_method2.pt', 2)
+        #do sampling method 2
+        train_and_evaluate(trainloader, testloader, 20, classes, 'saved_model_sampling_method2_task3.pt', 2)
+    sys.stdout = sys.__stdout__

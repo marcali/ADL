@@ -15,6 +15,7 @@ from torch.utils.data import random_split
 torch.manual_seed(123)
 torch.cuda.manual_seed_all(123)
 import time
+import sys
 
 class MixUp:
     """
@@ -240,6 +241,7 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
     print(f"Model {sampling_method} saved.")
     t1 = time.time()
     print("elapsed time : %.2f seconds" % (t1-t0))
+    return results_train, results_validation, results_test
     
 
 if __name__ == '__main__':
@@ -279,9 +281,12 @@ if __name__ == '__main__':
     holdoutloader = torch.utils.data.DataLoader(holdout_test_set, batch_size=batch_size, shuffle=False, num_workers=2)
         
     classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-    
-    #do smapling method 1
-    train_and_evaluate(trainloader, validationloader, holdoutloader, 20, classes, 'saved_model_sampling_method1_task3.pt', 1)
+    with open('output_task3.txt', 'w') as f:
+        sys.stdout = f
+        #do smapling method 1
+        train_accurace_1, validation_accuracy_1, test_accuracy_1 = train_and_evaluate(trainloader, validationloader, holdoutloader, 20, classes, 'saved_model_sampling_method1_task3.pt', 1)
 
-    #do sampling method 2
-    train_and_evaluate(trainloader, validationloader, holdoutloader, 20, classes, 'saved_model_sampling_method2_task3.pt', 2)
+        #do sampling method 2
+        train_accurace_2, validation_accuracy_2, test_accuracy_2 = train_and_evaluate(trainloader, validationloader, holdoutloader, 20, classes, 'saved_model_sampling_method2_task3.pt', 2)
+        print("Training accuracy model 1: {}, Validation accuracy model 1: {}, Test accuracy model 1: {}, Training accuracy model 2: {}, Validation accuracy model 2: {}, Test accuracy model 2: {}".format(train_accurace_1[-1].item(), validation_accuracy_1[-1].item(), test_accuracy_1[-1].item(), train_accurace_2[-1].item(), validation_accuracy_2[-1].item(), test_accuracy_2[-1].item()))
+    sys.stdout = sys.__stdout__
