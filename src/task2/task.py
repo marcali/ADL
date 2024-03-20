@@ -95,7 +95,7 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-    mixUp = MixUp(num_classes=len(classes),alpha=2,method=sampling_method)
+    mixUp = MixUp(num_classes=len(classes),alpha=0.4, method=sampling_method)
     results_train = []
     results_test = []
     ## train
