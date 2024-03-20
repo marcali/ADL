@@ -17,12 +17,33 @@ torch.cuda.manual_seed_all(123)
 import time
 
 class MixUp:
+    """
+    A class used to apply MixUp augmentation to images and labels.
+
+    Attributes:
+        num_classes (int): The number of classes in the labels.
+        alpha (float): The alpha parameter for the Beta distribution. Default is 0.2.
+        method (int): The method to use for sampling lambda. 1 for Beta distribution, 2 for Uniform distribution.
+
+    Methods:
+        __call__(images, labels): Applies MixUp augmentation to the images and labels.
+    """
     def __init__(self, num_classes, alpha=0.2, method=1):
         self.alpha = alpha
         self.method = method
         self.num_classes = num_classes
 
     def __call__(self, images, labels):
+        """
+        Applies MixUp augmentation to the images and labels.
+
+        Args:
+            images (Tensor): A tensor of images.
+            labels (Tensor): A tensor of labels.
+
+        Returns:
+            Tensor, Tensor: The augmented images and labels.
+        """
         labels = one_hot(labels, self.num_classes)
         
         if self.method == 1:
@@ -41,29 +62,36 @@ class MixUp:
 
         return mix_images, mix_labels
     
-def imshow(img):
-    img = img / 2 + 0.5  # Unnormalize
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.axis('off')
-    
 def calculate_metrics(preds, labels, classes):
-    # Initialize the confusion matrix
+    """
+    Calculates precision, recall, F1-score, true positives, and the number of images for each class.
+
+    Args:
+        preds (Tensor): A tensor of predicted labels.
+        labels (Tensor): A tensor of true labels.
+        classes (list): A list of class names.
+
+    Returns:
+        tuple: A tuple containing five elements:
+            - precision (Tensor): A tensor of precision values for each class.
+            - recall (Tensor): A tensor of recall values for each class.
+            - f1_score (Tensor): A tensor of F1-score values for each class.
+            - true_positives (Tensor): A tensor of the number of true positives for each class.
+            - num_images (Tensor): A tensor of the number of images for each class.
+    """
     confusion_matrix = torch.zeros(len(classes), len(classes))
 
-    # Calculate the confusion matrix
     for t, p in zip(labels.view(-1), preds.view(-1)):
         confusion_matrix[t.long(), p.long()] += 1
 
-    # Calculate precision, recall, and F1-score
     precision = confusion_matrix.diag() / confusion_matrix.sum(1)
     recall = confusion_matrix.diag() / confusion_matrix.sum(0)
     f1_score = 2 * (precision * recall) / (precision + recall)
 
-    # Calculate true positives
     true_positives = confusion_matrix.diag()
+    num_images = confusion_matrix.sum(1)
 
-    return precision, recall, f1_score, true_positives
+    return precision, recall, f1_score, true_positives, num_images
 
 def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs, classes, save_filename, sampling_method):
     t0 = time.time()
@@ -77,6 +105,8 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
 
     mixUp = MixUp(num_classes=len(classes), alpha=2, method=sampling_method)
     results_train = []
+    results_test = []
+    results_validation = []
     losses = []
     ## train
     for epoch in range(num_epochs):  # loop over the dataset multiple times
@@ -85,8 +115,9 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
         running_loss = 0.0
         print('Epoch {}, sampling method {}'.format(epoch+1, sampling_method))
         net.train()
+        all_labels_train = []
+        all_predictions_train = []
         for i, data in enumerate(trainloader, 0):
-
             images, labels = data
             images, labels = mixUp(images, labels)
 
@@ -95,8 +126,6 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
 
             # forward + backward + optimize
             with autocast():
-                all_labels_train = []
-                all_predictions_train = []
                 outputs = net(images.to(device))
                 #compute accuracy
                 _, predicted = torch.max(outputs.data, 1)
@@ -106,7 +135,6 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
                 #calculate extra metrics
                 all_labels_train.extend(labels_indices.tolist())
                 all_predictions_train.extend(predicted.tolist())
-                precision, recall, f1_score, true_positives = calculate_metrics(torch.tensor(all_labels_train), torch.tensor(all_predictions_train), classes)
                 #calculate accuracy
                 correct_train += (predicted == labels_indices).sum().item()
                 #calculate loss
@@ -118,7 +146,8 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
 
             # print statistics
             running_loss += loss.item()
-            
+        #extra metrics
+        precision, recall, f1_score, true_positives, num_images = calculate_metrics(torch.tensor(all_labels_train), torch.tensor(all_predictions_train), classes)
         average_loss = running_loss / i
         losses.append(running_loss / i) 
         print('Average loss: %.3f' % average_loss)      
@@ -129,6 +158,7 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
         results_train.append(train_accuracy) 
         for i, class_name in enumerate(classes):
             print(f"Class: {class_name}")
+            print(f"Number of images in the class: {num_images[i]}")
             print(f"Precision: {precision[i]}")
             print(f"Recall: {recall[i]}")
             print(f"F1-score: {f1_score[i]}")
@@ -139,12 +169,11 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
         net.eval()
         correct_val = 0
         total_val = 0
-        results_validation = []
         print("Evaluating validation set")
+        all_labels_val = []
+        all_predictions_val = []
 
         with torch.no_grad():
-            all_labels_val = []
-            all_predictions_val = []
             for data in validationloader:
                 images, labels = data
                 outputs = net(images.to(device))
@@ -158,56 +187,60 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
         val_accuracy = 100 * correct_val / total_val
         print('Epoch {}, Validation accuracy: {}%'.format(epoch+1, val_accuracy))
         results_validation.append(val_accuracy)    # accuracy on validation set
-        precision, recall, f1_score, true_positives = calculate_metrics(torch.tensor(all_labels_val), torch.tensor(all_predictions_val), classes)
+        precision, recall, f1_score, true_positives, num_images = calculate_metrics(torch.tensor(all_labels_val), torch.tensor(all_predictions_val), classes)
         for i, class_name in enumerate(classes):
             print(f"Class: {class_name}")
+            print(f"Number of images in the class: {num_images[i]}")
             print(f"Precision: {precision[i]}")
             print(f"Recall: {recall[i]}")
             print(f"F1-score: {f1_score[i]}")
             print(f"True positives: {true_positives[i]}")
             print()
             
-        #evaluation on test
-        results_test = []
-        correct_test = 0
-        total_test = 0
-        print("Evaluating holdout set")
+    #evaluation on holdout
+        
+    correct_test = 0
+    total_test = 0
+    print("Evaluating holdout set")
+    all_labels_test = []
+    all_predictions_test = []
 
-        with torch.no_grad():
-            all_labels_test = []
-            all_predictions_test = []
-            for data in holdoutloader:
-                images, labels = data
-                outputs = net(images.to(device))
-                _, predicted = torch.max(outputs.data, 1)
-                total_test += labels.size(0)
-                correct_test += (predicted == labels.to(device)).sum().item()
-                #collect labels and predictions
-                all_labels_test.extend(labels.to(device).tolist())
-                all_predictions_test.extend(predicted.tolist())
+    with torch.no_grad():
+        for data in holdoutloader:
+            images, labels = data
+            outputs = net(images.to(device))
+            _, predicted = torch.max(outputs.data, 1)
+            total_test += labels.size(0)
+            correct_test += (predicted == labels.to(device)).sum().item()
+            #collect labels and predictions
+            all_labels_test.extend(labels.to(device).tolist())
+            all_predictions_test.extend(predicted.tolist())
 
-        test_accuracy = 100 * correct_test / total_test
-        print('Epoch {}, Testing accuracy: {}%'.format(epoch+1, val_accuracy))
-        results_test.append(test_accuracy)    # accuracy on validation set
-        precision, recall, f1_score, true_positives = calculate_metrics(torch.tensor(all_labels_test), torch.tensor(all_predictions_test), classes)
-        for i, class_name in enumerate(classes):
-            print(f"Class: {class_name}")
-            print(f"Precision: {precision[i]}")
-            print(f"Recall: {recall[i]}")
-            print(f"F1-score: {f1_score[i]}")
-            print(f"True positives: {true_positives[i]}")
-            print()
+    num_images = len(images)
+    print(f"Number of images: {num_images}")
+    test_accuracy = 100 * correct_test / total_test
+    print('Validation accuracy: {}%'.format(test_accuracy))
+    results_test.append(test_accuracy)    # accuracy on holdout set
+    precision, recall, f1_score, true_positives, num_images = calculate_metrics(torch.tensor(all_labels_test), torch.tensor(all_predictions_test), classes)
+    for i, class_name in enumerate(classes):
+        print(f"Class: {class_name}")
+        print(f"Number of images in the class: {num_images[i]}")
+        print(f"Precision: {precision[i]}")
+        print(f"Recall: {recall[i]}")
+        print(f"F1-score: {f1_score[i]}")
+        print(f"True positives: {true_positives[i]}")
+        print()
+    
     
     # After training, plot the accuracies
     plt.figure(figsize=(10, 5))
     plt.plot(range(1, num_epochs+1), results_train, label='Train')
-    plt.plot(range(1, num_epochs+1), results_validation, label='Test')
-    plt.plot(range(1, num_epochs+1), results_test, label='Train')
+    plt.plot(range(1, num_epochs+1), results_validation, label='Validation')
     plt.title('Accuracy vs. Epoch sampling method '+ str(sampling_method) )
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.legend()
-    plt.savefig('Accuracy_vs_Epoch_metod_'+ str(sampling_method)+ '.png')
+    plt.savefig('Accuracy_vs_Epoch_method_'+ str(sampling_method)+ '.png')
     plt.show()
     
     torch.save(net.state_dict(), save_filename)
@@ -230,41 +263,41 @@ if __name__ == '__main__':
     batch_size = 36
 
     #dataset
-    # trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-    # testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
-    # full_dataset = torch.utils.data.ConcatDataset([trainset, testset])
-
-    #do subset 
-    from torch.utils.data import Subset
-    # Define the datasets
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
     testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    full_dataset = torch.utils.data.ConcatDataset([trainset, testset])
 
-    # Get the number of samples in the train and test sets
-    num_train_samples = len(trainset)
-    num_test_samples = len(testset)
+    #do subset 
+    # from torch.utils.data import Subset
+    # # Define the datasets
+    # trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    # testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
-    # Calculate the indices for the quarter of the datasets
-    train_indices = torch.randperm(num_train_samples)[:num_train_samples//6]
-    test_indices = torch.randperm(num_test_samples)[:num_test_samples//6]
+    # # Get the number of samples in the train and test sets
+    # num_train_samples = len(trainset)
+    # num_test_samples = len(testset)
 
-    # Create subsets
-    trainset_subset = Subset(trainset, train_indices)
-    testset_subset = Subset(testset, test_indices)
+    # # Calculate the indices for the quarter of the datasets
+    # train_indices = torch.randperm(num_train_samples)[:num_train_samples//6]
+    # test_indices = torch.randperm(num_test_samples)[:num_test_samples//6]
 
-    # Concatenate the subsets
-    full_dataset_subset = torch.utils.data.ConcatDataset([trainset_subset, testset_subset])
+    # # Create subsets
+    # trainset_subset = Subset(trainset, train_indices)
+    # testset_subset = Subset(testset, test_indices)
+
+    # # Concatenate the subsets
+    # full_dataset_subset = torch.utils.data.ConcatDataset([trainset_subset, testset_subset])
 
     #split
     #80/20 dev to test
-    dev_size = int(0.8 * len(full_dataset_subset))
-    test_size = len(full_dataset_subset) - dev_size
-    development_set, holdout_test_set  = torch.utils.data.random_split(full_dataset_subset, [dev_size, test_size])
+    dev_size = int(0.8 * len(full_dataset))
+    test_size = len(full_dataset) - dev_size
+    development_set, holdout_test_set  = torch.utils.data.random_split(full_dataset, [dev_size, test_size])
     #90/10 train/ test of dev set
     dev_train_size = int(0.9 * len(development_set))
     dev_test_size = len(development_set) - dev_train_size
     development_train_set, development_test_set  = torch.utils.data.random_split(development_set, [dev_test_size, dev_train_size])
-    print(len(full_dataset_subset))
+    print(len(full_dataset))
     print(len(development_set))
     print(len(development_train_set))
     print(len(development_test_set))
@@ -278,9 +311,7 @@ if __name__ == '__main__':
     classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
     
         #do smapling method 1
-    train_and_evaluate(trainloader, validationloader, holdoutloader, 1, classes, 'saved_model_sampling_method1_task3.pt', 1)
+    train_and_evaluate(trainloader, validationloader, holdoutloader, 5, classes, 'saved_model_sampling_method1_task3.pt', 1)
 
     #do sampling method 2
-    train_and_evaluate(trainloader, validationloader, holdoutloader,  1, classes, 'saved_model_sampling_method2_task3.pt', 2)
-
-    
+    train_and_evaluate(trainloader, validationloader, holdoutloader,  5, classes, 'saved_model_sampling_method2_task3.pt', 2)
