@@ -16,7 +16,7 @@ def polynomial_fun(w, x):
     return y.squeeze()
 
 
-def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_epochs=3400, reg_param = 0.01):
+def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_epochs=2400, reg_param = 0.01):
     #initialise weights to 1
     torch.manual_seed(123)
 
@@ -29,7 +29,7 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
     #change to sgd
     opt = torch.optim.Adam([weights], lr = lr)
     dataset = TensorDataset(pow_of_x, t)
-    loader = DataLoader(dataset, batch_size=miniBatchSize, shuffle=True)
+    loader = DataLoader(dataset, batch_size=miniBatchSize, shuffle=True, num_workers=4, pin_memory=True)
     mse_loss =  torch.nn.MSELoss()
     total_loss = 0.0
     num_batches = 0
@@ -94,14 +94,15 @@ if __name__ == '__main__':
         #1) Use polynomial_fun (𝑀 = 2, 𝐰 = [1,2,3]T) to generate a training set and a test set
         w = torch.tensor([1, 2, 3], dtype=torch.float32).unsqueeze(1).to(device)
 
-        m_values = [1, 2, 3, 4, 5, 6, 7, 8]
+        m_values = [1, 2, 3, 4, 5, 6, 7]
         
-        N_runs = 10
+        N_runs = 8
         best_ms = torch.zeros(N_runs)
 
         #grid search
         for j in range(N_runs):
             #generate new data each run
+            print('Run:{}'.format(j+1))
             x_train = torch.linspace(-20, 20, 20).to(device)
             x_test = torch.linspace(-20, 20, 10).to(device)
             y_train = polynomial_fun(w, x_train.to(device)).to(device)
@@ -138,7 +139,7 @@ if __name__ == '__main__':
                 print('Training RMSE for weights {:.3f}'.format( rmse_weights_opt.item()))
             
             best_ms[j] = best_m
-            print('For run {} best m is {} ' .format(j, best_m) )
+            print('For run {} best m is {} ' .format(j+1, best_m) )
     
         #test
         print(best_ms)
@@ -150,7 +151,7 @@ if __name__ == '__main__':
         rmse_test_opt= torch.sqrt(torch.mean(torch.square(diff_pred_test_opt)))
         rmse_weights_opt = torch.sqrt(torch.mean(torch.square(diff_pred_weights_opt)))
         std_dev_test_opt = torch.std(diff_pred_test_opt)
-        print('Best parameter M is {}'.format(best_m))
+        print('Optimized parameter M is {}'.format(best_m))
         print('Test RMSE  {:.3f}, and standard deviation is {:.3f}'.format( rmse_test_opt.item(), std_dev_test_opt.item()))
         print('Test RMSE for weights {:.3f}'.format( rmse_weights_opt.item()))
 
