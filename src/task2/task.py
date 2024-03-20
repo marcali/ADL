@@ -75,7 +75,7 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.axis('off')
     
-def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampling_method):
+def train_and_evaluate(trainloader, testloader, num_epochs, classes, save_filename, sampling_method):
     """
     Trains and evaluates a model.
     Args:
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     with open('output.txt', 'w') as f:
         sys.stdout = f
         #do smapling method 1
-        train_and_evaluate(trainloader, testloader, 20, classes, 'saved_model_sampling_method1_task3.pt', 1)
+        train_and_evaluate(trainloader, testloader, 20, classes,  'saved_model_sampling_method1_task3.pt', 1)
 
         #do sampling method 2
         train_and_evaluate(trainloader, testloader, 20, classes, 'saved_model_sampling_method2_task3.pt', 2)
