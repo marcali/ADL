@@ -146,7 +146,7 @@ if __name__ == '__main__':
         most_common = torch.mode(best_ms).values.item()
         w_hat_opimized_test = fit_polynomial_sgd(x_test.to(device), t_test.to(device), best_m)
         pred_test_opt = polynomial_fun(w_hat_opimized_test, x_test.to(device)).squeeze()
-        diff_pred_weights_opt = w.view(-1, 1).to(device) - w_hat_opimized
+        diff_pred_weights_opt = w.view(-1, 1).to(device) - w_hat_opimized_test
         diff_pred_test_opt = pred_test_opt - t_test.to(device)
         rmse_test_opt= torch.sqrt(torch.mean(torch.square(diff_pred_test_opt)))
         rmse_weights_opt = torch.sqrt(torch.mean(torch.square(diff_pred_weights_opt)))
