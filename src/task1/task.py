@@ -24,7 +24,7 @@ def fit_polynomial_ls(x, t, M):
 
     return w.view(-1)
 
-def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_epochs=3000):
+def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_epochs=3200):
     #initialise weights to 1
     torch.manual_seed(123)
 
@@ -66,12 +66,12 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
         
         #doesn't d much 
         if abs(min_loss - loss.item()) < loss_diff_threshold:
-            print('Early stopping at epoch {} with loss {}'.format(epoch+1, avg_loss))
+            print('Early stopping at epoch {:.3f} with loss {:.3f}'.format(epoch+1, avg_loss))
             break;
         min_loss = avg_loss
         
         if (epoch + 1) % print_freq == 0:
-            print('epoch {} loss {}'.format(epoch+1, avg_loss))
+            print('epoch {:.3f} loss {:.3f}'.format(epoch+1, avg_loss))
         total_loss = 0.0
         num_batches = 0
         
@@ -116,8 +116,8 @@ if __name__ == '__main__':
     #rmse
     rmse_obs_train = torch.sqrt(torch.mean(torch.square(diff_obs_train)))
     rmse_obs_test = torch.sqrt(torch.mean(torch.square(diff_obs_test)))
-    print(' RMSE between the observed training data and the “true” polynomial curve is {:.2f}', rmse_obs_train.item())
-    print(' RMSE between the observed test data and the “true” polynomial curve is {:.2f}', rmse_obs_test.item())
+    print(' RMSE between the observed training data and the “true” polynomial curve is {:.2f}' .format(rmse_obs_train.item()))
+    print(' RMSE between the observed test data and the “true” polynomial curve is {:.2f}' .format(rmse_obs_test.item()))
     # print('Test Mean difference between the observed training data and the underlying “true” polynomial curve in training data is ', mean_obs_test.item(), 'and standard diviation is', sd_obs_test.item())
     # print('Training Mean difference between the observed training data and the underlying “true” polynomial curve is ', mean_obs_train.item(), 'and standard diviation is', sd_obs_train.item() )
 

@@ -4,7 +4,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import torch.optim as optim
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import ssl
 from torch.cuda.amp import autocast, GradScaler
 from torchvision.models import VisionTransformer
@@ -88,8 +88,8 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
         dict: A dictionary containing the training and test accuracy for each epoch.
     """
     ## vision transformer 
-    net = VisionTransformer(image_size=32, patch_size=8, num_layers=6, num_heads=8,
-                            hidden_dim=384, mlp_dim=1536, dropout=0.0, num_classes=len(classes)).to(device)
+    net = VisionTransformer(image_size=32, patch_size=4, num_layers=6, num_heads=8,
+                            hidden_dim=512, mlp_dim=1536, dropout=0.0, num_classes=len(classes)).to(device)
 
     ## loss and optimiser
     criterion = torch.nn.CrossEntropyLoss()
@@ -99,11 +99,12 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
     results_train = []
     results_test = []
     ## train
+    print('Sampling method {}'.format(sampling_method))
     for epoch in range(num_epochs):  # loop over the dataset multiple times
         correct_train = 0
         total_train = 0
         running_loss = 0.0
-        print('Epoch {}, sampling method {}'.format(epoch+1, sampling_method))
+        print('Epoch {}'.format(epoch+1))
         net.train()
         for i, data in enumerate(trainloader, 0):
 
@@ -131,16 +132,11 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
 
             # print statistics
             running_loss += loss.item()
-            # if i % 200 == 199:    # print every 200 mini-batches
-            #     print('[%d, %5d] loss: %.3f' %
-            #         (epoch + 1, i + 1, running_loss / 2000))
-            #     running_loss = 0.0
             
         average_loss = running_loss / i
         train_accuracy = 100 * correct_train / total_train
-        print('Epoch {}, Training accuracy: {}%, Average loss: {}' .format(epoch+1, train_accuracy, average_loss))
+        print('Training accuracy: {}%, Average loss: {:.2f}' .format( train_accuracy, average_loss))
         results_train.append(train_accuracy) 
-        print('Training done.')
                
         # evaluation on test
         net.eval()
@@ -156,7 +152,7 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
                 correct_test += (predicted == labels.to(device)).sum().item()
 
         test_accuracy = 100 * correct_test / total_test
-        print('Epoch {}, Testing accuracy: {}%'.format(epoch+1, test_accuracy))
+        print('Testing accuracy: {}%'.format( test_accuracy))
         results_test.append(test_accuracy)    # save trained model
     
     
@@ -174,29 +170,38 @@ def train_and_evaluate(trainloader, testloader, num_epochs, save_filename, sampl
     # 36 images
     images_list = []
     labels_list = []
-    # Initialize a data iterator
+
     dataiter = iter(testloader)
-    # Keep fetching data until we have 36 images
     while len(images_list) < 36:
         images, labels = next(dataiter)
         images_list.extend(images)
         labels_list.extend(labels)
-
-    # Get predictions for these images
+        
+    #image predictions
     outputs = net(torch.stack(images_list[:36]).to(device))
     _, predicted = torch.max(outputs.data, 1)
+    #image params
+    
+    grid = Image.new('RGB', (6*32, 6*32))
 
-    # Prepare the figure
-    fig = plt.figure(figsize=(10, 10))
-
-    # For each image in the batch
     for i in range(36):
-        ax = fig.add_subplot(6, 6, i+1, xticks=[], yticks=[])
-        imshow(images_list[i])
-        ax.set_title(f"GT:{classes[labels_list[i]]}\nPred:{classes[predicted[i]]}", color=("green" if predicted[i]==labels_list[i] else "red"))
+        image = transforms.ToPILImage()(images_list[i]).convert("RGB")
+        grid.paste(image, ((i % 6) * 32, (i // 6) * 32))
+        print(f"Image {i+1}: Ground Truth: {classes[labels_list[i]]}, Predicted: {classes[predicted[i]]}")
 
-    # Save the figure
-    plt.savefig(f"result_{sampling_method}.png")
+    grid.save(f"result_{sampling_method}.png")
+
+    # # Prepare the figure
+    # fig = plt.figure(figsize=(10, 10))
+
+    # # For each image in the batch
+    # for i in range(36):
+    #     ax = fig.add_subplot(6, 6, i+1, xticks=[], yticks=[])
+    #     imshow(images_list[i])
+    #     ax.set_title(f"GT:{classes[labels_list[i]]}\nPred:{classes[predicted[i]]}", color=("green" if predicted[i]==labels_list[i] else "red"))
+
+    # # Save the figure
+    # plt.savefig(f"result_{sampling_method}.png")
     print('result.png saved.')
     
     #saving models 
@@ -243,7 +248,7 @@ if __name__ == '__main__':
     print('Ground truth labels:' + ' '.join('%5s' % classes[class_indices[j]] for j in range(batch_size)))
         
     #do smapling method 1
-    train_and_evaluate(trainloader, testloader, 1, 'saved_model_sampling_method1.pt', 1)
+    train_and_evaluate(trainloader, testloader, 20, 'saved_model_sampling_method1.pt', 1)
 
     #do sampling method 2
-    train_and_evaluate(trainloader, testloader, 1, 'saved_model_sampling_method2.pt', 2)
+    train_and_evaluate(trainloader, testloader, 20, 'saved_model_sampling_method2.pt', 2)
