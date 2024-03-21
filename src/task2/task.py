@@ -1,5 +1,4 @@
-# train script
-# adapted from: https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
+
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -8,8 +7,6 @@ from PIL import Image, ImageDraw, ImageFont
 import ssl
 from torch.cuda.amp import autocast, GradScaler
 from torchvision.models import VisionTransformer
-from matplotlib import pyplot as plt
-import numpy as np
 from torch.nn.functional import one_hot
 torch.manual_seed(123)
 torch.cuda.manual_seed_all(123)
@@ -62,18 +59,6 @@ class MixUp:
         mix_labels = lambd.view(-1, 1) * labels1 + (1 - lambd).view(-1, 1) * labels2
 
         return mix_images, mix_labels
-    
-def imshow(img):
-    """
-    Displays an image.
-
-    Args:
-        img (PIL.Image or ndarray): The image to display. This can be a PIL Image object or a numpy array.
-    """
-    img = img / 2 + 0.5  # Unnormalize
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.axis('off')
     
 def train_and_evaluate(trainloader, testloader, num_epochs, classes, save_filename, sampling_method):
     """
@@ -156,18 +141,6 @@ def train_and_evaluate(trainloader, testloader, num_epochs, classes, save_filena
         print('Testing accuracy: {}%'.format( test_accuracy))
         results_test.append(test_accuracy)    # save trained model
     
-    
-    # After training, plot the accuracies
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(1, num_epochs+1), results_train, label='Train')
-    plt.plot(range(1, num_epochs+1), results_test, label='Test')
-    plt.title('Accuracy vs. Epoch sampling method '+ str(sampling_method) )
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.savefig('Accuracy_vs_Epoch_method_'+ str(sampling_method)+ '.png')
-    plt.show()
-    
     # 36 images
     images_list = []
     labels_list = []
@@ -192,17 +165,6 @@ def train_and_evaluate(trainloader, testloader, num_epochs, classes, save_filena
 
     grid.save(f"result_{sampling_method}.png")
 
-    # # Prepare the figure
-    # fig = plt.figure(figsize=(10, 10))
-
-    # # For each image in the batch
-    # for i in range(36):
-    #     ax = fig.add_subplot(6, 6, i+1, xticks=[], yticks=[])
-    #     imshow(images_list[i])
-    #     ax.set_title(f"GT:{classes[labels_list[i]]}\nPred:{classes[predicted[i]]}", color=("green" if predicted[i]==labels_list[i] else "red"))
-
-    # # Save the figure
-    # plt.savefig(f"result_{sampling_method}.png")
     print('result.png saved.')
     
     #saving models 
@@ -236,9 +198,8 @@ if __name__ == '__main__':
     dataiter = iter(trainloader)
     images, labels = next(dataiter) # note: for pytorch versions (<1.14) use dataiter.next()
 
-    #TODO: make sure this generates 16 images
     #mix up 
-    mixup = MixUp(len(classes), 2)
+    mixup = MixUp(len(classes), 3)
     images, labels = mixup(images, labels)
 
     #save images

@@ -1,6 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import networkx as nx
+
 import  torch
 import time
 from torch.utils.data import TensorDataset, DataLoader
@@ -66,24 +64,7 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
 
         total_loss = 0.0
         num_batches = 0
-        
-    #Plotting
-    #TODO:remove
-
-    # plt.figure(figsize=(12, 5))
-    # plt.subplot(1, 2, 1)
-    # plt.plot(losses)
-    # plt.title('Loss per epoch')
-    # plt.xlabel('Epoch')
-    # plt.ylabel('Loss')
-
-    # plt.subplot(1, 2, 2)
-    # plt.plot(grad_norms)
-    # plt.title('Gradient norm per epoch')
-    # plt.xlabel('Epoch')
-    # plt.ylabel('Gradient norm')
-    # plt.show()
-                
+                        
     return weights.detach()
 
 #implement task script 1
@@ -94,6 +75,7 @@ if __name__ == '__main__':
         #1) Use polynomial_fun (𝑀 = 2, 𝐰 = [1,2,3]T) to generate a training set and a test set
         w = torch.tensor([1, 2, 3], dtype=torch.float32).unsqueeze(1).to(device)
 
+        #grid search 1 to 7
         m_values = [1, 2, 3, 4, 5, 6, 7]
         
         N_runs = 8
@@ -155,8 +137,4 @@ if __name__ == '__main__':
         print('Test RMSE  {:.3f}, and standard deviation is {:.3f}'.format( rmse_test_opt.item(), std_dev_test_opt.item()))
         print('Test RMSE for weights {:.3f}'.format( rmse_weights_opt.item()))
 
-        fig, ax = plt.subplots()
-        ax.plot(x_test.to(device), y_test.to(device), 'o')
-        ax.plot(x_test.to(device), pred_test_opt, 'v')
-        plt.show()
     sys.stdout = sys.__stdout__

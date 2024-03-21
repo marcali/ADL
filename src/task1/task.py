@@ -1,6 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import networkx as nx
 import  torch
 import time
 from torch.utils.data import TensorDataset, DataLoader
@@ -44,7 +41,6 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
     min_loss = torch.inf
     loss_diff_threshold = 1e-3
     losses = []
-    grad_norms = []
     print('Training with SGD , polynomial degree ', M)
     
     for epoch in range(N_epochs):
@@ -54,7 +50,6 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
             loss = mse_loss(batch_y, batch_t)
             loss.backward() 
             #TODO: for plotting only
-            grad_norms.append(weights.grad.norm().item())
 
             #torch.nn.utils.clip_grad_value_(weights, 1)
             total_loss += loss.item()
@@ -74,23 +69,6 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
             print('epoch {:.3f} loss {:.3f}'.format(epoch+1, avg_loss))
         total_loss = 0.0
         num_batches = 0
-        
-    #Plotting
-    #TODO:remove
-
-    plt.figure(figsize=(12, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(losses)
-    plt.title('Loss per epoch')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-
-    plt.subplot(1, 2, 2)
-    plt.plot(grad_norms)
-    plt.title('Gradient norm per epoch')
-    plt.xlabel('Epoch')
-    plt.ylabel('Gradient norm')
-    plt.show()
                 
     return weights.detach()
 
@@ -188,9 +166,4 @@ if __name__ == '__main__':
             print('Test RMSE between the “SGD-predicted” values and the “true” polynomial curve is {:.2f}, and s.d. is {:.2f}'.format( rmse_test_opt.item(), std_dev_test_opt.item()))
             print('RMSE between the true weights and predicted by SGD weights is {:.2f}'.format( rmse_weights_opt.item()))
             
-            #TODO: remove all plots
-            fig, ax = plt.subplots()
-            ax.plot(x_train, y_train, 'o')
-            ax.plot(x_train, pred_train_opt, 'v')
-            plt.show()
     sys.stdout = sys.__stdout__

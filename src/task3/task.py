@@ -1,5 +1,3 @@
-# train script
-# adapted from: https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -8,8 +6,6 @@ from PIL import Image
 import ssl
 from torch.cuda.amp import autocast, GradScaler
 from torchvision.models import VisionTransformer
-from matplotlib import pyplot as plt
-import numpy as np
 from torch.nn.functional import one_hot
 from torch.utils.data import random_split
 torch.manual_seed(123)
@@ -226,16 +222,6 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
     precision, recall, f1_score, true_positives, num_images = calculate_metrics(torch.tensor(all_labels_test), torch.tensor(all_predictions_test), classes)
     for i, class_name in enumerate(classes):
         print("Class: {}, Images in the class: {}, Precision: {:.2f}%, Recall: {:.2f}%, F1-score: {:.2f}%, True positives: {}".format(class_name, num_images[i], precision[i]*100, recall[i]*100, f1_score[i]*100, true_positives[i]))    
-    # After training, plot the accuracies
-    plt.figure(figsize=(10, 5))
-    plt.plot(range(1, num_epochs+1), results_train, label='Train')
-    plt.plot(range(1, num_epochs+1), results_validation, label='Validation')
-    plt.title('Accuracy vs. Epoch sampling method '+ str(sampling_method) )
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.savefig('Accuracy_vs_Epoch_method_'+ str(sampling_method)+ '.png')
-    plt.show()
     
     torch.save(net.state_dict(), save_filename)
     print(f"Model {sampling_method} saved.")
@@ -246,7 +232,7 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
 
 if __name__ == '__main__':
     
-    #ssl._create_default_https_context = ssl._create_unverified_context
+    ssl._create_default_https_context = ssl._create_unverified_context
 
     #if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
