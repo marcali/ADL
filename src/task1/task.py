@@ -96,27 +96,28 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
 
 #implement task script 1
 if __name__ == '__main__':
-    with open('output_task1.txt', 'w') as f:
-        #1) Use polynomial_fun (𝑀 = 2, 𝐰 = [1,2,3]T) to generate a training set and a test set
-        w = torch.tensor([1, 2, 3], dtype=torch.float32).unsqueeze(1)
-        x_train = torch.linspace(-20, 20, 20)
-        x_test = torch.linspace(-20, 20, 10)
-        y_train = polynomial_fun(w, x_train)
-        y_test = polynomial_fun(w, x_test)
-        #observed t values with gauss noise 
-        t_train = y_train + 0.5 * torch.randn_like(y_train)
-        t_test = y_test + 0.5 * torch.randn_like(y_test)
-        M = torch.tensor([2,3,4])
+    
+    #1) Use polynomial_fun (𝑀 = 2, 𝐰 = [1,2,3]T) to generate a training set and a test set
+    w = torch.tensor([1, 2, 3], dtype=torch.float32).unsqueeze(1)
+    x_train = torch.linspace(-20, 20, 20)
+    x_test = torch.linspace(-20, 20, 10)
+    y_train = polynomial_fun(w, x_train)
+    y_test = polynomial_fun(w, x_test)
+    #observed t values with gauss noise 
+    t_train = y_train + 0.5 * torch.randn_like(y_train)
+    t_test = y_test + 0.5 * torch.randn_like(y_test)
+    M = torch.tensor([2,3,4])
 
-        # diff in noisy and not noisy data 
-        diff_obs_train = t_train - y_train
-        diff_obs_test = t_test - y_test
-        #mean diff
-        sd_obs_train, mean_obs_train = torch.std_mean(diff_obs_train)
-        sd_obs_test, mean_obs_test = torch.std_mean(diff_obs_test)
-        #rmse
-        rmse_obs_train = torch.sqrt(torch.mean(torch.square(diff_obs_train)))
-        rmse_obs_test = torch.sqrt(torch.mean(torch.square(diff_obs_test)))
+    # diff in noisy and not noisy data 
+    diff_obs_train = t_train - y_train
+    diff_obs_test = t_test - y_test
+    #mean diff
+    sd_obs_train, mean_obs_train = torch.std_mean(diff_obs_train)
+    sd_obs_test, mean_obs_test = torch.std_mean(diff_obs_test)
+    #rmse
+    rmse_obs_train = torch.sqrt(torch.mean(torch.square(diff_obs_train)))
+    rmse_obs_test = torch.sqrt(torch.mean(torch.square(diff_obs_test)))
+    with open('output_task1.txt', 'w') as f:
         print(' RMSE between the observed training data and the “true” polynomial curve is {:.2f}' .format(rmse_obs_train.item()))
         print(' RMSE between the observed test data and the “true” polynomial curve is {:.2f}' .format(rmse_obs_test.item()))
         # print('Test Mean difference between the observed training data and the underlying “true” polynomial curve in training data is ', mean_obs_test.item(), 'and standard diviation is', sd_obs_test.item())
