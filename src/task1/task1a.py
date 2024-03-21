@@ -14,7 +14,7 @@ def polynomial_fun(w, x):
     return y.squeeze()
 
 
-def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_epochs=2400, reg_param = 0.01):
+def fit_polynomial_sgd(x, t, M = 0, reg_param = 0.01, lr=1e-2, miniBatchSize=5, N_epochs=2400, ):
     #initialise weights to 1
     torch.manual_seed(123)
 
@@ -42,8 +42,7 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
             opt.zero_grad()
             batch_y = batch_x.to(device)@weights.to(device)
             
-            loss = mse_loss(batch_y, batch_t.to(device))
-            loss += reg_param * torch.norm(weights)
+            loss = mse_loss(batch_y, batch_t.to(device)) + reg_param * torch.norm(weights,1)
             loss.backward() 
             #TODO: for plotting only
             grad_norms.append(weights.grad.norm().item())
@@ -71,6 +70,7 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
 if __name__ == '__main__':
     with open('output_task1a.txt', 'w') as f:
         sys.stdout = f
+        print('The method to optimize M chosen is a grid search over discrete parameters M as well as grid search over L1 regularization parameter lambda')
 
         #1) Use polynomial_fun (𝑀 = 2, 𝐰 = [1,2,3]T) to generate a training set and a test set
         w = torch.tensor([1, 2, 3], dtype=torch.float32).unsqueeze(1).to(device)
@@ -78,8 +78,10 @@ if __name__ == '__main__':
         #grid search 1 to 7
         m_values = [1, 2, 3, 4, 5, 6, 7]
         
-        N_runs = 8
+        N_runs = 5
         best_ms = torch.zeros(N_runs)
+        best_reg = torch.zeros(N_runs)
+        lambda_values = [0.0001, 0.001, 0.01, 0.1, 1, 10]
 
         #grid search
         for j in range(N_runs):
@@ -97,36 +99,40 @@ if __name__ == '__main__':
             best_weights_rmse = float('inf')
             best_m = None
             for i, m in enumerate(m_values):
-                w_true = torch.arange(1, m + 2).float().unsqueeze(1)
-                #print('For polynomial degree ', m)
+                for k, reg in enumerate(lambda_values):
+                    w_true = torch.arange(1, m + 2).float().unsqueeze(1)
+                    #print('For polynomial degree ', m)
+                    
+                    #for SGD
+                    w_hat_opimized = fit_polynomial_sgd(x_train.to(device), t_train.to(device), m, reg)
+                    #training
+                    pred_train_opt = polynomial_fun(w_hat_opimized, x_train.to(device)).squeeze()
+                    
+                    #rmse train
+                    diff_pred_train_opt = pred_train_opt - t_train.to(device)
+                    diff_pred_weights_opt = w_true.view(-1, 1).to(device) - w_hat_opimized
+                    rmse_train_opt= torch.sqrt(torch.mean(torch.square(diff_pred_train_opt)))
+                    rmse_weights_opt = torch.sqrt(torch.mean(torch.square(diff_pred_weights_opt)))
+                    std_dev_train_opt = torch.std(diff_pred_train_opt)
+                    
+                    if rmse_train_opt < best_rmse and std_dev_train_opt < best_sd and rmse_weights_opt< best_weights_rmse:
+                        best_m = m
+                        best_rmse = rmse_train_opt
+                        best_sd = std_dev_train_opt
+                        best_weights_rmse = rmse_weights_opt
+                        best_reg = k
+                    print('Training RMSE {:.3f}, and standard deviation is {:.3f}'.format( rmse_train_opt.item(), std_dev_train_opt.item()))
+                    print('Training RMSE for weights {:.3f}'.format( rmse_weights_opt.item()))
                 
-                #for SGD
-                w_hat_opimized = fit_polynomial_sgd(x_train.to(device), t_train.to(device), m)
-                #training
-                pred_train_opt = polynomial_fun(w_hat_opimized, x_train.to(device)).squeeze()
-                
-                #rmse train
-                diff_pred_train_opt = pred_train_opt - t_train.to(device)
-                diff_pred_weights_opt = w_true.view(-1, 1).to(device) - w_hat_opimized
-                rmse_train_opt= torch.sqrt(torch.mean(torch.square(diff_pred_train_opt)))
-                rmse_weights_opt = torch.sqrt(torch.mean(torch.square(diff_pred_weights_opt)))
-                std_dev_train_opt = torch.std(diff_pred_train_opt)
-                
-                if rmse_train_opt < best_rmse and std_dev_train_opt < best_sd and rmse_weights_opt< best_weights_rmse:
-                    best_m = m
-                    best_rmse = rmse_train_opt
-                    best_sd = std_dev_train_opt
-                    best_weights_rmse = rmse_weights_opt
-                print('Training RMSE {:.3f}, and standard deviation is {:.3f}'.format( rmse_train_opt.item(), std_dev_train_opt.item()))
-                print('Training RMSE for weights {:.3f}'.format( rmse_weights_opt.item()))
-            
             best_ms[j] = best_m
+            best_reg[j] = best_reg
             print('For run {} best m is {} ' .format(j+1, best_m) )
+            print('For run {} best lambda is {} ' .format(j+1, best_reg) )
     
         #test
         print(best_ms)
         most_common = torch.mode(best_ms).values.item()
-        w_hat_opimized_test = fit_polynomial_sgd(x_test.to(device), t_test.to(device), best_m)
+        w_hat_opimized_test = fit_polynomial_sgd(x_test.to(device), t_test.to(device), best_m, best_reg)
         pred_test_opt = polynomial_fun(w_hat_opimized_test, x_test.to(device)).squeeze()
         diff_pred_weights_opt = w.view(-1, 1).to(device) - w_hat_opimized_test
         diff_pred_test_opt = pred_test_opt - t_test.to(device)
