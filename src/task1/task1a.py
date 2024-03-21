@@ -89,7 +89,7 @@ def fit_polynomial_sgd(x, t, M = 0, lr=1e-2, miniBatchSize=5, print_freq=400, N_
 #implement task script 1
 if __name__ == '__main__':
     with open('output_task1a.txt', 'w') as f:
-
+        sys.stdout = f
 
         #1) Use polynomial_fun (𝑀 = 2, 𝐰 = [1,2,3]T) to generate a training set and a test set
         w = torch.tensor([1, 2, 3], dtype=torch.float32).unsqueeze(1).to(device)

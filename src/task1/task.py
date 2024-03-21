@@ -118,6 +118,7 @@ if __name__ == '__main__':
     rmse_obs_train = torch.sqrt(torch.mean(torch.square(diff_obs_train)))
     rmse_obs_test = torch.sqrt(torch.mean(torch.square(diff_obs_test)))
     with open('output_task1.txt', 'w') as f:
+        sys.stdout = f
         print(' RMSE between the observed training data and the “true” polynomial curve is {:.2f}' .format(rmse_obs_train.item()))
         print(' RMSE between the observed test data and the “true” polynomial curve is {:.2f}' .format(rmse_obs_test.item()))
         # print('Test Mean difference between the observed training data and the underlying “true” polynomial curve in training data is ', mean_obs_test.item(), 'and standard diviation is', sd_obs_test.item())
