@@ -3,7 +3,8 @@ import  torch
 import time
 from torch.utils.data import TensorDataset, DataLoader
 torch.manual_seed(123)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+torch.cuda.manual_seed_all(123)
 import sys
 
 def polynomial_fun(w, x):
@@ -68,6 +69,7 @@ def fit_polynomial_sgd(x, t, M = 0, reg_param = 0.01, lr=1e-2, miniBatchSize=5, 
 
 #implement task script 1
 if __name__ == '__main__':
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     with open('output_task1a.txt', 'w') as f:
         sys.stdout = f
         print('The method to optimize M chosen is a grid search over discrete parameters M as well as grid search over L1 regularization parameter lambda')
@@ -104,7 +106,7 @@ if __name__ == '__main__':
                     #print('For polynomial degree ', m)
                     
                     #for SGD
-                    w_hat_opimized = fit_polynomial_sgd(x_train.to(device), t_train.to(device), m, reg)
+                    w_hat_opimized = fit_polynomial_sgd(x_train.to(device), t_train.to(device), m.to(device), reg.to(device))
                     #training
                     pred_train_opt = polynomial_fun(w_hat_opimized, x_train.to(device)).squeeze()
                     

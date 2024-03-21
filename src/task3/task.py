@@ -191,7 +191,8 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
         precision, recall, f1_score, true_positives, num_images = calculate_metrics(torch.tensor(all_labels_val), torch.tensor(all_predictions_val), classes)
         for i, class_name in enumerate(classes):
             print("Class: {}, Images in the class: {}, Precision: {:.2f}%, Recall: {:.2f}%, F1-score: {:.2f}%, True positives: {}".format(class_name, num_images[i], precision[i]*100, recall[i]*100, f1_score[i]*100, true_positives[i]))        
-    #evaluation on holdout
+    
+    #evaluation on holdout after training
     average_loss = 0.0    
     correct_test = 0
     total_test = 0
@@ -216,7 +217,7 @@ def train_and_evaluate(trainloader, validationloader, holdoutloader, num_epochs,
     losses_test.append(average_loss)
     test_accuracy = 100 * correct_test / total_test
     num_images_all = len(all_labels_test)
-    print('Epoch {}, Test accuracy: {:.2f}%, Average loss:{:.2f}, Images in test:{:.2f}'.format(epoch+1, test_accuracy, average_loss, num_images_all))
+    print('Evaluating on holdout dataset, accuracy: {:.2f}%, Average loss:{:.2f}, Images in test:{:.2f}'.format(epoch+1, test_accuracy, average_loss, num_images_all))
     results_test.append(test_accuracy)    # accuracy on holdout set
     #extra metrics
     precision, recall, f1_score, true_positives, num_images = calculate_metrics(torch.tensor(all_labels_test), torch.tensor(all_predictions_test), classes)
@@ -267,12 +268,11 @@ if __name__ == '__main__':
     holdoutloader = torch.utils.data.DataLoader(holdout_test_set, batch_size=batch_size, shuffle=False, num_workers=2)
         
     classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-    with open('output_task3.txt', 'w') as f:
-        sys.stdout = f
-        #do smapling method 1
-        train_accurace_1, validation_accuracy_1, test_accuracy_1 = train_and_evaluate(trainloader, validationloader, holdoutloader, 20, classes, 'saved_model_sampling_method1_task3.pt', 1)
 
-        #do sampling method 2
-        train_accurace_2, validation_accuracy_2, test_accuracy_2 = train_and_evaluate(trainloader, validationloader, holdoutloader, 20, classes, 'saved_model_sampling_method2_task3.pt', 2)
-        print("Training accuracy model 1: {}, Validation accuracy model 1: {}, Test accuracy model 1: {}, Training accuracy model 2: {}, Validation accuracy model 2: {}, Test accuracy model 2: {}".format(train_accurace_1[-1], validation_accuracy_1[-1], test_accuracy_1[-1], train_accurace_2[-1], validation_accuracy_2[-1], test_accuracy_2[-1]))
-    sys.stdout = sys.__stdout__
+    #do smapling method 1
+    train_accurace_1, validation_accuracy_1, test_accuracy_1 = train_and_evaluate(trainloader, validationloader, holdoutloader, 20, classes, 'saved_model_sampling_method1_task3.pt', 1)
+
+    #do sampling method 2
+    train_accurace_2, validation_accuracy_2, test_accuracy_2 = train_and_evaluate(trainloader, validationloader, holdoutloader, 20, classes, 'saved_model_sampling_method2_task3.pt', 2)
+    print("Model 1 final epoch:Training accuracy : {:.2f}, Validation accuracy : {:.2f}, Test accuracy: {:.2f}".format(train_accurace_1[-1], validation_accuracy_1[-1], test_accuracy_1[-1]))
+    print("Model 2 final epoch:Training accuracy : {:.2f}, Validation accuracy : {:.2f}, Test accuracy: {:.2f}".format(train_accurace_2[-1], validation_accuracy_2[-1], test_accuracy_2[-1]))
