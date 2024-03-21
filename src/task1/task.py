@@ -156,14 +156,17 @@ if __name__ == '__main__':
             #rmse
             diff_pred_train_opt = pred_train_opt - t_train
             diff_pred_test_opt = pred_test_opt - t_test
+            diff_pred_test_y_opt = pred_test_opt - y_test
             diff_pred_weights_opt = w.view(-1, 1) - w_hat_opimized
             rmse_train_opt= torch.sqrt(torch.mean(torch.square(diff_pred_train_opt)))
             rmse_test_opt= torch.sqrt(torch.mean(torch.square(diff_pred_test_opt)))
+            rmse_test_y_opt= torch.sqrt(torch.mean(torch.square(diff_pred_test_y_opt)))
             rmse_weights_opt = torch.sqrt(torch.mean(torch.square(diff_pred_weights_opt)))
             std_dev_train_opt = torch.std(diff_pred_train_opt)
             std_dev_test_opt = torch.std(diff_pred_test_opt)
             print('Training RMSE  between the “SGD-predicted” values and the “true” polynomial curve is {:.2f}, and s.d. is {:.2f}'.format( rmse_train_opt.item(), std_dev_train_opt.item()))
             print('Test RMSE between the “SGD-predicted” values and the “true” polynomial curve is {:.2f}, and s.d. is {:.2f}'.format( rmse_test_opt.item(), std_dev_test_opt.item()))
             print('RMSE between the true weights and predicted by SGD weights is {:.2f}'.format( rmse_weights_opt.item()))
+            print('RMSE between the true y and predicted by SGD {:.2f}'.format( rmse_test_y_opt.item()))
             
     sys.stdout = sys.__stdout__
