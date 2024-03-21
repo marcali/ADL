@@ -248,11 +248,11 @@ if __name__ == '__main__':
     class_indices = labels.argmax(dim=1)
     print('Ground truth labels:' + ' '.join('%5s' % classes[class_indices[j]] for j in range(batch_size)))
         
-    with open('output.txt', 'w') as f:
+    with open('output_task2.txt', 'w') as f:
         sys.stdout = f
         #do smapling method 1
-        train_and_evaluate(trainloader, testloader, 20, classes,  'saved_model_sampling_method1_task3.pt', 1)
+        train_and_evaluate(trainloader, testloader, 20, classes,  'saved_model_sampling_method1_task2.pt', 1)
 
         #do sampling method 2
-        train_and_evaluate(trainloader, testloader, 20, classes, 'saved_model_sampling_method2_task3.pt', 2)
+        train_and_evaluate(trainloader, testloader, 20, classes, 'saved_model_sampling_method2_task2.pt', 2)
     sys.stdout = sys.__stdout__

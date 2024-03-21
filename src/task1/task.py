@@ -191,4 +191,4 @@ if __name__ == '__main__':
             ax.plot(x_train, y_train, 'o')
             ax.plot(x_train, pred_train_opt, 'v')
             plt.show()
-        sys.stdout = sys.__stdout__
+    sys.stdout = sys.__stdout__
